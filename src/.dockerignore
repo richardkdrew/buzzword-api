@@ -1,0 +1,14 @@
+.dockerignore
+.gitignore
+.git/
+.vscode/
+bin/
+obj/
+dockerTask.ps1
+dockerTask.sh
+docker-compose.*
+Dockerfile
+Dockerfile.*
+project.lock.json
+README.md
+LICENSE

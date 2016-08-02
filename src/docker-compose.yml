@@ -1,0 +1,7 @@
+version: '2'
+
+services:
+  api-dotnet:
+    image: richardkdrew/buzzword-api
+    ports:
+      - "5001:80"

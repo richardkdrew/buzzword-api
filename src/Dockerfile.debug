@@ -1,0 +1,33 @@
+# DOCKER VERSION 1.12.0
+FROM microsoft/dotnet:1.0.0-preview2-sdk
+
+MAINTAINER Richard Drew <richardkdrew@gmail.com>
+
+# set up some environmnt variables/arguments for debugging
+ENV NUGET_XMLDOC_MODE skip
+ARG CLRDBG_VERSION=VS2015U2
+
+# add the secret sauce (clr debug enabling script)
+ADD https://raw.githubusercontent.com/Microsoft/MIEngine/getclrdbg-release/scripts/GetClrDbg.sh /clrdbg/
+
+# stir the sauce ;)
+WORKDIR /clrdbg
+RUN chmod 700 GetClrDbg.sh \
+    && ./GetClrDbg.sh $CLRDBG_VERSION
+
+# set up some basic (runtime) environment variable defaults for the app
+ENV ASPNETCORE_URLS "http://*:80;https://*:443"
+ENV ASPNETCORE_ENVIRONMENT "Development"
+
+# set the start/working directory
+WORKDIR /app
+
+# copy the files into place
+COPY . /app
+
+# expose the hosting port
+EXPOSE 443/tcp
+EXPOSE 80/tcp
+
+# set the entrypoint
+ENTRYPOINT ["/bin/bash", "-c", "if [ -z \"$REMOTE_DEBUGGING\" ]; then dotnet $BINARY_NAME.dll; else sleep infinity; fi"]
