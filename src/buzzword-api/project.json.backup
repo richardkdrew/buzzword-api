@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "authors": ["Richard Drew"],
-  "description": "A simple API that delivers buzzwords from different categories. Used for demo purposes.",  
+  "description": "A simple API that delivers a random buzzword for a given category from different categories. Used for demo purposes.",  
   "dependencies": {
     "Microsoft.NETCore.App": {
       "version": "1.0.0",
@@ -9,16 +9,14 @@
     },
     "Microsoft.AspNetCore.Mvc": "1.0.0",
     "Microsoft.AspNetCore.Server.Kestrel": "1.0.0",
+    "Microsoft.AspNet.WebApi.Client": "5.2.3",
     "Microsoft.Extensions.Configuration.EnvironmentVariables": "1.0.0"
   },
 
   "frameworks": {
     "netcoreapp1.0": {
       "imports": [
-        "dotnet5.6",
-        "dnxcore50",
-        "netstandard1.6",
-        "portable-net451+win8"
+        "dnxcore50"
       ]
     }
   },

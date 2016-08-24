@@ -1,0 +1,12 @@
+version: '2'
+
+services:
+  buzzword-api:
+    image: buzzword-api:debug
+    build:
+      context: .
+      dockerfile: Dockerfile.debug
+    ports:
+      - "5001:5001"
+    environment:
+      - REMOTE_DEBUGGING

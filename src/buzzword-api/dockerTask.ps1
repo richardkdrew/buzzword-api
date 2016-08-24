@@ -6,16 +6,16 @@ Runs docker-compose.
 .PARAMETER Build
 Builds a Docker image.
 .PARAMETER Clean
-Removes the image and kills all containers based on that image.
+Removes the image buzzword-api and kills all containers based on that image.
 .PARAMETER ComposeForDebug
 Builds the image and runs docker-compose.
 .PARAMETER StartDebugging
 Finds the running container and starts the debugger inside of it.
 .PARAMETER Environment
-The enviorment to build for (debug or release), defaults to debug
+The enviorment to build for (Debug or Release), defaults to Debug
 .EXAMPLE
 C:\PS> .\dockerTask.ps1 -Build
-Builds a Docker image for the current project
+Build a Docker image named buzzword-api
 #>
 
 Param(
@@ -32,74 +32,69 @@ Param(
     [parameter(ParameterSetName="Compose")]
     [Parameter(ParameterSetName="ComposeForDebug")]
     [parameter(ParameterSetName="Build")]
+    [parameter(ParameterSetName="Clean")]
     [ValidateNotNullOrEmpty()]
-    [String]$Environment = "debug"
+    [String]$Environment = "Debug"
 )
 
-# Configure to use a different Docker engine (NOTE: you must fill in both of these for this to work with an engine in a different location)
-$dockerHostIp = ""
-$dockerCertPath = ""
-
-if ([System.String]::IsNullOrWhiteSpace($dockerHostIp)) {
-    $dockerHostIp = "localhost"
-}
-
-$imageName="richardkdrew/buzzword-api"
+$imageName="buzzword-api"
 $projectName="buzzwordapi"
 $serviceName="buzzword-api"
 $containerName="${projectName}_${serviceName}_1"
 $publicPort=5001
-$isWebProject=$true
-$url="http://${dockerHostIp}:${publicPort}/api/buzzword"
+$url="http://localhost:$publicPort"
 $runtimeID = "debian.8-x64"
 $framework = "netcoreapp1.0"
 
 # Kills all running containers of an image and then removes them.
 function CleanAll () {
+    $composeFileName = "docker-compose.yml"
+    if ($Environment -ne "Release") {
+        $composeFileName = "docker-compose.$Environment.yml"
+    }
 
-    SetDockerHost
+    if (Test-Path $composeFileName) {
+        docker-compose -f "$composeFileName" -p $projectName down --rmi all
 
-    # List all running containers that use $imageName, kill them and then remove them.
-    docker ps -a | select-string -pattern $imageName | foreach { $containerId =  $_.ToString().split()[0]; docker kill $containerId *>&1 | Out-Null; docker rm $containerId *>&1 | Out-Null }
+        $danglingImages = $(docker images -q --filter 'dangling=true')
+        if (-not [String]::IsNullOrWhiteSpace($danglingImages)) {
+            docker rmi -f $danglingImages
+        }
+    }
+    else {
+        Write-Error -Message "$Environment is not a valid parameter. File '$composeFileName' does not exist." -Category InvalidArgument
+    }
 }
 
 # Builds the Docker image.
 function BuildImage () {
-    $dockerFileName = "Dockerfile"
-    $taggedImageName = $imageName
-    if ($Environment -ne "release") {
-        $dockerFileName = "Dockerfile.$Environment"
-        $taggedImageName = "${imageName}:$Environment".ToLowerInvariant()
+    $composeFileName = "docker-compose.yml"
+    if ($Environment -ne "Release") {
+        $composeFileName = "docker-compose.$Environment.yml"
     }
 
-    if (Test-Path "${buildScriptPathPrefix}${dockerFileName}") {
-        Write-Host "Building the project ($Environment)."
+    if (Test-Path $composeFileName) {
+        Write-Host "Building the project ($ENVIRONMENT)."
         $pubFolder = "bin\$Environment\$framework\publish"
         dotnet publish -f $framework -r $runtimeID -c $Environment -o $pubFolder
 
         Write-Host "Building the image $imageName ($Environment)."
-
-        SetDockerHost
-        
-        docker build -f "$pubFolder\$dockerFileName" -t $taggedImageName $pubFolder
+        docker-compose -f "$pubFolder\$composeFileName" -p $projectName build
     }
     else {
-        Write-Error -Message "$Environment is not a valid parameter. File '$dockerFileName' does not exist." -Category InvalidArgument
+        Write-Error -Message "$Environment is not a valid parameter. File '$composeFileName' does not exist." -Category InvalidArgument
     }
 }
 
 # Runs docker-compose.
 function Compose () {
     $composeFileName = "docker-compose.yml"
-    if ($Environment -ne "release") {
+    if ($Environment -ne "Release") {
         $composeFileName = "docker-compose.$Environment.yml"
     }
 
-    if (Test-Path "${buildScriptPathPrefix}${composeFileName}") {
+    if (Test-Path $composeFileName) {
         Write-Host "Running compose file $composeFileName"
-
-        SetDockerHost
-
         docker-compose -f $composeFileName -p $projectName kill
         docker-compose -f $composeFileName -p $projectName up -d
     }
@@ -110,8 +105,6 @@ function Compose () {
 
 function StartDebugging () {
     Write-Host "Running on $url"
-
-    SetDockerHost
 
     $containerId = (docker ps -f "name=$containerName" -q -n=1)
     if ([System.String]::IsNullOrWhiteSpace($containerId)) {
@@ -144,20 +137,12 @@ function OpenSite () {
     Start-Process $url
 }
 
-function SetDockerHost () {
-    if([System.String]::IsNullOrWhiteSpace($dockerHostIp) -ne $false -and [System.String]::IsNullOrWhiteSpace($dockerCertPath) -ne $false) {
-        $env:DOCKER_HOST = tcp://$dockerHostIp:2376
-        $env:DOCKER_CERT_PATH = $dockerCertPath
-        $env:DOCKER_TLS_VERIFY = 1
-    }    
-}
+$Environment = $Environment.ToLowerInvariant()
 
 # Call the correct function for the parameter that was used
 if($Compose) {
     Compose
-    if ($isWebProject) {
-        OpenSite
-    }
+    OpenSite
 }
 elseif($ComposeForDebug) {
     $env:REMOTE_DEBUGGING = 1

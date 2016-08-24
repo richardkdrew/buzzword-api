@@ -1,0 +1,41 @@
+{
+  "version": "*",
+  "authors": [
+    "Richard Drew"
+  ],
+  "description": "A simple API that delivers a random buzzword for the categpory supplied. Used as an education exercise (learning about dotnet core) and for demo purposes (docker, swarm), etc...",
+  "buildOptions": {
+    "emitEntryPoint": true,
+    "debugType": "portable"
+  },
+  "dependencies": {
+    "Microsoft.NETCore.App": {
+      "type": "platform",
+      "version": "1.0.0"      
+    },
+    "Microsoft.AspNetCore.Mvc": "1.0.0",
+    "Microsoft.AspNetCore.Server.Kestrel": "1.0.0",
+    "Microsoft.AspNet.WebApi.Client": "5.2.3",
+    "Microsoft.Extensions.Configuration.EnvironmentVariables": "1.0.0",
+    "System.Runtime.Serialization.Xml": "4.1.1"
+  },
+  "frameworks": {
+    "netcoreapp1.0": {
+      "imports": [
+        "dnxcore50",
+        "portable-net45+netcore45+wp8+wp81+wpa81"
+      ]
+    }
+  },
+  "tooling": {
+    "defaultNamespace": "BuzzwordApi"
+  },
+  "publishOptions": {
+    "include": [
+      "Dockerfile.debug",
+      "Dockerfile",
+      "docker-compose.debug.yml",
+      "docker-compose.yml"
+    ]
+  }
+}
