@@ -19,15 +19,19 @@ namespace BuzzwordApi.Controllers
         {
             bool failed = false;
             var randomWord = string.Empty;
+            var service = string.Empty;
             
             try 
             {                  
                 // Get a list of buzzwords for a given category          
-                var buzzwords = await _buzzwordServiceClient.GetBuzzwordsByCategory(category).ConfigureAwait(false);                             
+                var buzzwordResponse = await _buzzwordServiceClient.GetBuzzwordsByCategory(category).ConfigureAwait(false);   
+
+                var buzzwords = buzzwordResponse.Buzzwords;  
+                service = buzzwordResponse.ServiceId;                        
 
                 // Select a random one
                 Random r = new Random();               
-                randomWord = buzzwords[r.Next(0, buzzwords.ToArray().Length)];
+                randomWord = buzzwords[r.Next(0, buzzwords.Length)];
             }  
             catch
             {
@@ -38,6 +42,7 @@ namespace BuzzwordApi.Controllers
                 buzzword = randomWord,
                 category = category,
                 apiId = Environment.MachineName,
+                serviceId = service,
                 error = failed
             });                   
         }
