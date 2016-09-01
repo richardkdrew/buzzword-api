@@ -1,6 +1,7 @@
 using BuzzwordApi.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Threading.Tasks;
 
 namespace BuzzwordApi.Controllers
 {
@@ -14,7 +15,7 @@ namespace BuzzwordApi.Controllers
         }
 
         [HttpGet]
-        public JsonResult Get(string category)
+        public async Task<JsonResult> Get(string category)
         {
             bool failed = false;
             var randomWord = string.Empty;
@@ -22,11 +23,11 @@ namespace BuzzwordApi.Controllers
             try 
             {                  
                 // Get a list of buzzwords for a given category          
-                var buzzwords = _buzzwordServiceClient.GetBuzzwordsByCategory(category).Result.ToArray();                             
+                var buzzwords = await _buzzwordServiceClient.GetBuzzwordsByCategory(category).ConfigureAwait(false);                             
 
                 // Select a random one
                 Random r = new Random();               
-                randomWord = buzzwords[r.Next(0, buzzwords.Length)];
+                randomWord = buzzwords[r.Next(0, buzzwords.ToArray().Length)];
             }  
             catch
             {
