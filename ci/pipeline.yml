@@ -1,0 +1,161 @@
+resources:
+- name: buzzword-api
+  type: git
+  source:
+    uri: {{github-uri}}
+    branch: master
+    private_key: {{github-private-key}}
+
+- name: dotnet-image
+  type: docker-image
+  source:
+    repository: microsoft/dotnet
+    tag: '1.0.0-core'
+
+- name: buzzword-api-image
+  type: docker-image
+  source: 
+    repository: richardkdrew/buzzword-api
+    username: {{dockerhub-user}}
+    password: {{dockerhub-password}}
+
+- name: version
+  type: semver
+  source:
+    driver: git
+    initial_version: 0.0.1
+    uri: {{github-uri-bump-semver}}
+    branch: version
+    file: version
+    private_key: {{github-private-key}}  
+
+jobs:
+- name: minor
+  public: true
+  serial_groups: [version]
+  plan:
+  - get: version
+    params: {bump: minor}
+  - put: version
+    params: {file: version/version}
+
+- name: major
+  public: true
+  serial_groups: [version]
+  plan:
+  - get: version
+    params: {bump: major}
+  - put: version
+    params: {file: version/version}
+
+- name: patch
+  public: true
+  serial_groups: [version]
+  plan:
+  - get: version
+    passed: [docker-image]
+    params: {bump: patch, pre: rc}
+    trigger: true
+  - put: version
+    params: {file: version/version}
+
+- name: build
+  public: true
+  serial_groups: [version]
+  plan:
+  - aggregate:  
+    - get: buzzword-api
+      trigger: true
+  - task: build
+    # file: api/ci/tasks/build.yml
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: microsoft/dotnet
+          version: 1.0.0-preview2-sdk
+
+      inputs:
+       - name: buzzword-api
+
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e -x
+          
+          workingFolder=$PWD/buzzword-service/src/buzzword-api
+
+          cd $workingFolder
+
+          # running dotnet restore
+          dotnet restore --verbosity Error 
+          # build it!
+          dotnet build
+          # run unit tests
+          #dotnet test
+
+- name: docker-image
+  public: true
+  serial_groups: [version]
+  plan:
+  - aggregate:  
+    - get: buzzword-api
+      passed: [build]
+      trigger: true
+    - get: dotnet-image
+      params: {save: true}
+    - get: version
+      params: {bump: final}
+  - task: create-docker-build-context
+    config:
+      platform: linux
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: microsoft/dotnet
+          version: 1.0.0-preview2-sdk
+
+      inputs:
+       - name: buzzword-api
+       - name: version
+    
+      outputs:
+        - name: docker-build-context
+
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e -x
+          
+          workingFolder=$PWD/buzzword-api/src/buzzword-api
+          configuration="Release"          
+          framework="netcoreapp1.0"
+          pubFolder="$workingFolder/bin/$environment/$framework/publish"
+          output=$PWD/docker-build-context
+          runtimeId="debian.8-x64"                              
+
+          cd $workingFolder
+
+          # running dotnet restore
+          dotnet restore --verbosity Error
+          # create the artificats
+          dotnet publish -f $framework -r $runtimeId -c $configuration -o $pubFolder #--version-suffix $version        
+          # making 'package' available as an output          
+          cp -r $pubFolder/* $output
+
+  - put: buzzword-api-image
+    params: 
+      build: docker-build-context
+      load_base: dotnet-image
+      tag: version/version
+      tag_as_latest: true    
+  - put: version
+    params: {file: version/version}
+    
